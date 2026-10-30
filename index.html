@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>TV Links</title>
+<meta name="theme-color" content="#080a0e" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="TV Links" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<style>
+  :root {
+    --bg: #080a0e;
+    --surf: #12161d;
+    --surf2: #1a1f29;
+    --text: #f1ede3;
+    --muted: #8a8f9c;
+    --gold: #c9a84c;
+    --danger: #e0645c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: clamp(14px, 1.5vw, 24px);
+    padding: 4vh 5vw;
+    overflow-x: hidden;
+  }
+  header {
+    display: flex; align-items: center; gap: 1.5vw;
+    margin-bottom: 3vh;
+  }
+  .brand { font-size: 2.4em; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .brand span { color: var(--gold); }
+  .count { color: var(--muted); }
+  .spacer { flex: 1; }
+
+  button, .tile {
+    font: inherit; color: inherit; cursor: pointer;
+    outline: none; text-decoration: none;
+  }
+  .btn {
+    background: var(--surf2); border: 2px solid transparent; border-radius: .6em;
+    padding: .55em 1.1em;
+  }
+  .btn:focus, .btn:hover { border-color: var(--gold); }
+  .btn.on { background: var(--gold); color: #1a1405; font-weight: 700; }
+  .btn.primary { background: var(--gold); color: #1a1405; font-weight: 700; }
+  .btn.danger { color: var(--danger); }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16em, 1fr));
+    gap: 1.6vw;
+  }
+  .tile {
+    position: relative; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; text-align: center;
+    aspect-ratio: 16 / 9; padding: 1em;
+    background: linear-gradient(145deg, hsl(var(--h) 38% 20%), hsl(var(--h) 30% 11%));
+    border: 3px solid transparent; border-radius: .9em;
+    transition: transform .12s ease, border-color .12s ease;
+    overflow: hidden;
+  }
+  .tile:focus, .tile:hover {
+    border-color: var(--gold); transform: scale(1.05); z-index: 2;
+    box-shadow: 0 0 0 4px rgba(201,168,76,.25);
+  }
+  .tile-name { font-size: 1.7em; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; word-break: break-word; }
+  .tile-host { margin-top: .4em; font-size: .8em; color: rgba(241,237,227,.6); word-break: break-all; }
+  body.editing .tile:not(.add)::after {
+    content: "✎"; position: absolute; top: .4em; right: .6em;
+    color: var(--gold); font-size: 1.3em;
+  }
+  .tile.add {
+    background: transparent; border: 3px dashed #333a47; color: var(--muted);
+  }
+  .tile.add:focus, .tile.add:hover { border: 3px solid var(--gold); color: var(--gold); }
+  .tile.add .plus { font-size: 3em; line-height: 1; }
+
+  #empty { text-align: center; color: var(--muted); margin: 0 0 3vh; }
+  #hint { margin-top: 4vh; color: var(--muted); font-size: .8em; text-align: center; }
+
+  #overlay {
+    position: fixed; inset: 0; background: rgba(4,5,8,.88);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
+  }
+  #overlay[hidden] { display: none; }
+  #dlg {
+    width: min(42em, 90vw); background: var(--surf); border-radius: 1em;
+    padding: 1.8em; border: 1px solid #262c38;
+  }
+  #dlg h2 { margin: 0 0 1em; color: var(--gold); letter-spacing: .06em; text-transform: uppercase; }
+  #dlg label { display: block; margin: 0 0 .3em; color: var(--muted); }
+  #dlg input {
+    width: 100%; font: inherit; color: var(--text);
+    background: var(--bg); border: 2px solid #2a303c; border-radius: .5em;
+    padding: .6em .8em; margin-bottom: 1em; outline: none;
+  }
+  #dlg input:focus { border-color: var(--gold); }
+  #err { color: var(--danger); min-height: 1.4em; margin: -.4em 0 .6em; }
+  .row { display: flex; gap: .8em; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">TV <span>Links</span></div>
+  <div class="count" id="count"></div>
+  <div class="spacer"></div>
+  <button class="btn" id="editBtn" type="button" aria-pressed="false">✎ Mode édition</button>
+</header>
+
+<p id="empty" hidden>Aucun lien pour l’instant. Ajoute le premier avec la tuile « Ajouter ».</p>
+<main id="grid"></main>
+<p id="hint">OK : ouvrir · Retour : fermer · « Mode édition » pour modifier ou supprimer une tuile · Les liens sont enregistrés sur cet appareil</p>
+
+<div id="overlay" hidden>
+  <form id="dlg" autocomplete="off" novalidate>
+    <h2 id="dlgTitle">Ajouter un lien</h2>
+    <label for="fName">Nom</label>
+    <input id="fName" type="text" maxlength="40" placeholder="Mon site" />
+    <label for="fUrl">Adresse</label>
+    <input id="fUrl" type="url" inputmode="url" placeholder="exemple.com" />
+    <div id="err" role="alert"></div>
+    <div class="row">
+      <button class="btn danger" id="delBtn" type="button" hidden>Supprimer</button>
+      <button class="btn" id="cancelBtn" type="button">Annuler</button>
+      <button class="btn primary" id="saveBtn" type="submit">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'atl_links_v1';
+  var links = load();
+  var editMode = false;
+  var editingId = null;
+  var returnFocus = null;
+
+  var grid = document.getElementById('grid');
+  var countEl = document.getElementById('count');
+  var emptyEl = document.getElementById('empty');
+  var editBtn = document.getElementById('editBtn');
+  var overlay = document.getElementById('overlay');
+  var form = document.getElementById('dlg');
+  var dlgTitle = document.getElementById('dlgTitle');
+  var fName = document.getElementById('fName');
+  var fUrl = document.getElementById('fUrl');
+  var errEl = document.getElementById('err');
+  var delBtn = document.getElementById('delBtn');
+  var cancelBtn = document.getElementById('cancelBtn');
+
+  // ── Stockage ────────────────────────────────────────────────────────────
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (x) {
+        return x && typeof x.id === 'string' && typeof x.name === 'string' && typeof x.url === 'string';
+      });
+    } catch (e) { return []; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(links)); } catch (e) { /* stockage indisponible */ }
+  }
+
+  // ── Utilitaires ─────────────────────────────────────────────────────────
+  function normalizeUrl(raw) {
+    var v = (raw || '').trim();
+    if (!v) return null;
+    if (!/^[a-z][a-z0-9+.\-]*:\/\//i.test(v)) v = 'https://' + v;
+    try {
+      var u = new URL(v);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+      if (!u.hostname || u.hostname.indexOf('.') === -1) return null;
+      return u.href;
+    } catch (e) { return null; }
+  }
+  function hostOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
+  }
+  function hue(str) {
+    var h = 0;
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+    return h;
+  }
+  function newId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  // ── Rendu ───────────────────────────────────────────────────────────────
+  function render() {
+    grid.textContent = '';
+    links.forEach(function (l) {
+      var a = document.createElement('a');
+      a.className = 'tile';
+      a.href = l.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.dataset.id = l.id;
+      a.style.setProperty('--h', hue(l.name));
+      var n = document.createElement('div');
+      n.className = 'tile-name';
+      n.textContent = l.name;
+      var h = document.createElement('div');
+      h.className = 'tile-host';
+      h.textContent = hostOf(l.url);
+      a.appendChild(n);
+      a.appendChild(h);
+      a.addEventListener('click', function (e) {
+        if (editMode) { e.preventDefault(); openDialog(l.id); }
+      });
+      grid.appendChild(a);
+    });
+
+    var add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'tile add';
+    add.id = 'addTile';
+    var plus = document.createElement('div');
+    plus.className = 'plus';
+    plus.textContent = '+';
+    var lbl = document.createElement('div');
+    lbl.textContent = 'Ajouter';
+    add.appendChild(plus);
+    add.appendChild(lbl);
+    add.addEventListener('click', function () { openDialog(null); });
+    grid.appendChild(add);
+
+    emptyEl.hidden = links.length > 0;
+    countEl.textContent = links.length === 0 ? '' : links.length + (links.length > 1 ? ' liens' : ' lien');
+  }
+
+  function focusTile(id) {
+    var el = id ? grid.querySelector('.tile[data-id="' + id + '"]') : null;
+    (el || document.getElementById('addTile')).focus();
+  }
+
+  // ── Mode édition ────────────────────────────────────────────────────────
+  editBtn.addEventListener('click', function () {
+    editMode = !editMode;
+    document.body.classList.toggle('editing', editMode);
+    editBtn.classList.toggle('on', editMode);
+    editBtn.setAttribute('aria-pressed', String(editMode));
+    editBtn.textContent = editMode ? '✎ Édition activée' : '✎ Mode édition';
+  });
+
+  // ── Boîte de dialogue ───────────────────────────────────────────────────
+  function dialogOpen() { return !overlay.hidden; }
+
+  function openDialog(id) {
+    editingId = id;
+    returnFocus = id;
+    var l = id ? links.filter(function (x) { return x.id === id; })[0] : null;
+    dlgTitle.textContent = l ? 'Modifier le lien' : 'Ajouter un lien';
+    fName.value = l ? l.name : '';
+    fUrl.value = l ? l.url : '';
+    errEl.textContent = '';
+    delBtn.hidden = !l;
+    overlay.hidden = false;
+    // Une entrée d'historique permet à la touche Retour de fermer la boîte.
+    if (location.hash !== '#dialog') location.hash = 'dialog';
+    fName.focus();
+  }
+
+  function hideDialog() {
+    if (!dialogOpen()) return;
+    overlay.hidden = true;
+    focusTile(returnFocus);
+  }
+
+  function closeDialog() {
+    if (location.hash === '#dialog') history.back(); else hideDialog();
+  }
+
+  window.addEventListener('hashchange', function () {
+    if (location.hash !== '#dialog') hideDialog();
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var url = normalizeUrl(fUrl.value);
+    if (!url) {
+      errEl.textContent = 'Adresse invalide (exemple : exemple.com ou https://exemple.com).';
+      fUrl.focus();
+      return;
+    }
+    var name = fName.value.trim() || hostOf(url);
+    if (editingId) {
+      links = links.map(function (x) {
+        return x.id === editingId ? { id: x.id, name: name, url: url } : x;
+      });
+      returnFocus = editingId;
+    } else {
+      var id = newId();
+      links.push({ id: id, name: name, url: url });
+      returnFocus = id;
+    }
+    save();
+    render();
+    closeDialog();
+  });
+
+  delBtn.addEventListener('click', function () {
+    if (!editingId) return;
+    links = links.filter(function (x) { return x.id !== editingId; });
+    save();
+    render();
+    returnFocus = null;
+    closeDialog();
+  });
+  cancelBtn.addEventListener('click', closeDialog);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeDialog(); });
+
+  // ── Navigation télécommande (flèches) ──────────────────────────────────
+  function columnCount() {
+    var cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
+    return Math.max(cols, 1);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.key;
+    var arrows = k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight';
+
+    if (dialogOpen()) {
+      if (k === 'Escape') { e.preventDefault(); closeDialog(); return; }
+      if (!arrows) return;
+      var items = Array.prototype.filter.call(
+        form.querySelectorAll('input, button'),
+        function (el) { return !el.hidden && !el.disabled; }
+      );
+      var i = items.indexOf(document.activeElement);
+      if (i === -1) return;
+      var isInput = document.activeElement.tagName === 'INPUT';
+      var next = null;
+      if (k === 'ArrowDown' || (!isInput && k === 'ArrowRight')) next = items[Math.min(i + 1, items.length - 1)];
+      if (k === 'ArrowUp' || (!isInput && k === 'ArrowLeft')) next = items[Math.max(i - 1, 0)];
+      if (next) { e.preventDefault(); next.focus(); }
+      return;
+    }
+
+    if (!arrows) return;
+    var tiles = Array.prototype.slice.call(grid.children);
+    var idx = tiles.indexOf(document.activeElement);
+    var cols = columnCount();
+
+    if (document.activeElement === editBtn) {
+      if (k === 'ArrowDown' && tiles.length) { e.preventDefault(); tiles[0].focus(); }
+      return;
+    }
+    if (idx === -1) {
+      if (tiles.length) { e.preventDefault(); tiles[0].focus(); }
+      return;
+    }
+    e.preventDefault();
+    var target = idx;
+    if (k === 'ArrowRight') target = idx + 1;
+    if (k === 'ArrowLeft') target = idx - 1;
+    if (k === 'ArrowDown') target = idx + cols;
+    if (k === 'ArrowUp') target = idx - cols;
+    if (k === 'ArrowDown' && target >= tiles.length && Math.floor(idx / cols) < Math.floor((tiles.length - 1) / cols)) {
+      target = tiles.length - 1; // dernière rangée incomplète
+    }
+    if (k === 'ArrowUp' && target < 0) { editBtn.focus(); return; }
+    if (target >= 0 && target < tiles.length) tiles[target].focus();
+  });
+
+  // ── Démarrage ───────────────────────────────────────────────────────────
+  if (location.hash === '#dialog') location.hash = '';
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* hors ligne non disponible */ });
+    });
+  }
+  render();
+  focusTile(links.length ? links[0].id : null);
+})();
+</script>
+</body>
+</html>
