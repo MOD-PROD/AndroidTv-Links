@@ -78,6 +78,10 @@
     content: "✎"; position: absolute; top: .4em; right: .6em;
     color: var(--gold); font-size: 1.3em;
   }
+  .tile.has-img {
+    background-size: cover; background-position: center;
+  }
+  .tile.has-img .tile-name, .tile.has-img .tile-host { display: none; }
   .tile.add {
     background: transparent; border: 3px dashed #333a47; color: var(--muted);
   }
@@ -142,6 +146,10 @@
   'use strict';
 
   var KEY = 'atl_links_v1';
+  // Liens proposés au premier lancement (modifiables / supprimables).
+  var DEFAULTS = [
+    { id: 'wikiflix', name: 'Wikiflix', url: 'https://wikiflix.toolforge.org/#/', img: 'wikiflix.jpg' }
+  ];
   var links = load();
   var editMode = false;
   var editingId = null;
@@ -164,12 +172,15 @@
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
-      var arr = raw ? JSON.parse(raw) : [];
+      if (raw === null) return DEFAULTS.map(function (d) { return { id: d.id, name: d.name, url: d.url, img: d.img }; });
+      var arr = JSON.parse(raw);
       if (!Array.isArray(arr)) return [];
-      return arr.filter(function (x) {
+      arr = arr.filter(function (x) {
         return x && typeof x.id === 'string' && typeof x.name === 'string' && typeof x.url === 'string';
       });
-    } catch (e) { return []; }
+      arr.forEach(function (x) { if (x.id === 'wikiflix' && !x.img) x.img = 'wikiflix.jpg'; });
+      return arr;
+    } catch (e) { return DEFAULTS.map(function (d) { return { id: d.id, name: d.name, url: d.url, img: d.img }; }); }
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(links)); } catch (e) { /* stockage indisponible */ }
@@ -209,7 +220,12 @@
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       a.dataset.id = l.id;
+      a.setAttribute('aria-label', l.name);
       a.style.setProperty('--h', hue(l.name));
+      if (l.img === 'wikiflix.jpg') {
+        a.classList.add('has-img');
+        a.style.backgroundImage = "url('wikiflix.jpg')";
+      }
       var n = document.createElement('div');
       n.className = 'tile-name';
       n.textContent = l.name;
@@ -299,7 +315,7 @@
     var name = fName.value.trim() || hostOf(url);
     if (editingId) {
       links = links.map(function (x) {
-        return x.id === editingId ? { id: x.id, name: name, url: url } : x;
+        return x.id === editingId ? { id: x.id, name: name, url: url, img: x.img } : x;
       });
       returnFocus = editingId;
     } else {
