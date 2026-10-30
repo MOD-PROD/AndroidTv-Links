@@ -149,7 +149,7 @@
   // Liens proposés au premier lancement (modifiables / supprimables).
   var DEFAULTS = [
     { id: 'wikiflix', name: 'Wikiflix', url: 'https://wikiflix.toolforge.org/#/', img: 'wikiflix.jpg' },
-    { id: 'govioz', name: 'Govioz', url: 'https://govioz.com/' }
+    { id: 'govioz', name: 'Wadrox', url: 'https://wadrox.com/' }
   ];
   var links = load();
   var editMode = false;
@@ -180,10 +180,27 @@
         return x && typeof x.id === 'string' && typeof x.name === 'string' && typeof x.url === 'string';
       });
       arr.forEach(function (x) { if (x.id === 'wikiflix' && !x.img) x.img = 'wikiflix.jpg'; });
-      // Migration : ajoute Govioz en deuxième position aux installations existantes.
-      if (!arr.some(function (x) { return x.id === 'govioz'; })) {
-        var govioz = { id: 'govioz', name: 'Govioz', url: 'https://govioz.com/' };
-        arr.splice(arr.length && arr[0].id === 'wikiflix' ? 1 : 0, 0, govioz);
+      // Migration : tuile id=govioz → affiche le site de destination (wadrox).
+      var GOVIOZ_URL = 'https://wadrox.com/';
+      var GOVIOZ_NAME = 'Wadrox';
+      var hasGovioz = false;
+      var dirty = false;
+      arr = arr.map(function (x) {
+        if (x.id !== 'govioz') return x;
+        hasGovioz = true;
+        var next = { id: x.id, name: x.name, url: x.url, img: x.img };
+        try {
+          var h = new URL(x.url).hostname.replace(/^www\./, '');
+          if (h === 'govioz.com') { next.url = GOVIOZ_URL; next.name = GOVIOZ_NAME; dirty = true; }
+          else if (!x.name || x.name === 'Govioz') { next.name = hostLabel(x.url) || GOVIOZ_NAME; dirty = true; }
+        } catch (e) { next.url = GOVIOZ_URL; next.name = GOVIOZ_NAME; dirty = true; }
+        return next;
+      });
+      if (!hasGovioz) {
+        arr.splice(arr.length && arr[0].id === 'wikiflix' ? 1 : 0, 0, { id: 'govioz', name: GOVIOZ_NAME, url: GOVIOZ_URL });
+        dirty = true;
+      }
+      if (dirty) {
         try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch (e) { /* stockage indisponible */ }
       }
       return arr;
@@ -203,9 +220,11 @@
         if (!url) return;
         var changed = false;
         links = links.map(function (item) {
-          if (item.id !== 'govioz' || item.url === url) return item;
+          if (item.id !== 'govioz') return item;
+          var label = hostLabel(url) || item.name;
+          if (item.url === url && item.name === label) return item;
           changed = true;
-          return { id: item.id, name: item.name, url: url, img: item.img };
+          return { id: item.id, name: label, url: url, img: item.img };
         });
         if (changed) { save(); render(); }
       })
@@ -226,6 +245,13 @@
   }
   function hostOf(url) {
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
+  }
+  // Libellé lisible pour la tuile (ex. wadrox.com → Wadrox).
+  function hostLabel(url) {
+    var h = hostOf(url);
+    if (!h || h.indexOf('.') === -1) return '';
+    var base = h.split('.')[0];
+    return base ? base.charAt(0).toUpperCase() + base.slice(1) : '';
   }
   function hue(str) {
     var h = 0;
