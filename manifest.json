@@ -1,7 +1,7 @@
 {
-  "name": "TV Links",
-  "short_name": "TV Links",
-  "description": "Tes liens favoris en tuiles, pensé pour la télécommande.",
+  "name": "AndroidTV Links",
+  "short_name": "AndroidTV",
+  "description": "Tes liens favoris Android TV en tuiles, pensé pour la télécommande.",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",

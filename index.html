@@ -4,11 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark" />
-<title>TV Links</title>
+<title>AndroidTV Links</title>
 <meta name="theme-color" content="#080a0e" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="TV Links" />
+<meta name="apple-mobile-web-app-title" content="AndroidTV Links" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/png" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -115,7 +115,7 @@
 <body>
 
 <header>
-  <div class="brand">TV <span>Links</span></div>
+  <div class="brand">AndroidTV <span>Links</span></div>
   <div class="count" id="count"></div>
   <div class="spacer"></div>
   <button class="btn" id="editBtn" type="button" aria-pressed="false">✎ Mode édition</button>
@@ -148,7 +148,8 @@
   var KEY = 'atl_links_v1';
   // Liens proposés au premier lancement (modifiables / supprimables).
   var DEFAULTS = [
-    { id: 'wikiflix', name: 'Wikiflix', url: 'https://wikiflix.toolforge.org/#/', img: 'wikiflix.jpg' }
+    { id: 'wikiflix', name: 'Wikiflix', url: 'https://wikiflix.toolforge.org/#/', img: 'wikiflix.jpg' },
+    { id: 'govioz', name: 'Govioz', url: 'https://govioz.com/' }
   ];
   var links = load();
   var editMode = false;
@@ -179,11 +180,36 @@
         return x && typeof x.id === 'string' && typeof x.name === 'string' && typeof x.url === 'string';
       });
       arr.forEach(function (x) { if (x.id === 'wikiflix' && !x.img) x.img = 'wikiflix.jpg'; });
+      // Migration : ajoute Govioz en deuxième position aux installations existantes.
+      if (!arr.some(function (x) { return x.id === 'govioz'; })) {
+        var govioz = { id: 'govioz', name: 'Govioz', url: 'https://govioz.com/' };
+        arr.splice(arr.length && arr[0].id === 'wikiflix' ? 1 : 0, 0, govioz);
+        try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch (e) { /* stockage indisponible */ }
+      }
       return arr;
     } catch (e) { return DEFAULTS.map(function (d) { return { id: d.id, name: d.name, url: d.url, img: d.img }; }); }
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(links)); } catch (e) { /* stockage indisponible */ }
+  }
+
+  // Synchronise uniquement l'adresse de la tuile Govioz depuis le JSON publié
+  // par le scraper GitHub Actions. Le nom, l'ordre et les autres tuiles restent intacts.
+  function refreshGovioz() {
+    fetch('data/govioz.json?ts=' + Date.now(), { cache: 'no-store' })
+      .then(function (response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
+      .then(function (data) {
+        var url = normalizeUrl(data && data.url);
+        if (!url) return;
+        var changed = false;
+        links = links.map(function (item) {
+          if (item.id !== 'govioz' || item.url === url) return item;
+          changed = true;
+          return { id: item.id, name: item.name, url: url, img: item.img };
+        });
+        if (changed) { save(); render(); }
+      })
+      .catch(function () { /* le site reste utilisable avec la dernière adresse connue */ });
   }
 
   // ── Utilitaires ─────────────────────────────────────────────────────────
@@ -400,6 +426,9 @@
     });
   }
   render();
+  refreshGovioz();
+  window.setInterval(refreshGovioz, 60 * 60 * 1000);
+  window.addEventListener('online', refreshGovioz);
   focusTile(links.length ? links[0].id : null);
 })();
 </script>

@@ -1,7 +1,7 @@
 // Service worker : l'interface reste disponible hors ligne.
 // Incrémenter CACHE à chaque modification des fichiers ci-dessous.
-const CACHE = 'tv-links-v4';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './wikiflix.jpg'];
+const CACHE = 'androidtv-links-v5';
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './wikiflix.jpg', './data/govioz.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
