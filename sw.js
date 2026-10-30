@@ -1,10 +1,19 @@
 // Service worker : l'interface reste disponible hors ligne.
 // Incrémenter CACHE à chaque modification des fichiers ci-dessous.
-const CACHE = 'androidtv-links-v6';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './wikiflix.jpg', './data/govioz.json'];
+const CACHE = 'androidtv-links-v7';
+const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './wikiflix.jpg'];
+const OPTIONAL = ['./data/govioz.json'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE).then(async (c) => {
+      await c.addAll(CORE);
+      // govioz.json est optionnel : un 404 ne doit pas faire échouer l'install.
+      await Promise.all(
+        OPTIONAL.map((url) => c.add(url).catch(() => undefined))
+      );
+    }).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {

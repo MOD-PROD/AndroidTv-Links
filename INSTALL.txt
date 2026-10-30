@@ -1,0 +1,22 @@
+Fichiers à ajouter / mettre à jour dans le dépôt MOD-PROD/AndroidTv-Links
+=======================================================================
+
+À AJOUTER (nouveaux) :
+  data/govioz.json
+  scripts/update_govioz.py
+  .github/workflows/update-govioz.yml
+
+À REMPLACER :
+  sw.js   (cache PWA v7 : govioz.json optionnel, n'empêche plus l'install)
+
+Étapes GitHub :
+1. Copier ces fichiers à la racine du dépôt (même arborescence).
+2. Commit + push sur main.
+3. Settings → Actions → General → Workflow permissions → "Read and write permissions" → Save.
+4. Settings → Pages → Deploy from branch main / (root) si pas déjà fait.
+5. Actions → "Surveiller l'adresse Govioz" → Run workflow (test manuel).
+
+Après push, le site https://mod-prod.github.io/AndroidTv-Links/ chargera
+data/govioz.json et la tuile Govioz pointera vers https://wadrox.com/
+
+Le workflow tourne toutes les heures (cron :17) et peut être lancé à la main.
