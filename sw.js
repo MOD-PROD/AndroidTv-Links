@@ -1,6 +1,6 @@
 // Service worker : l'interface reste disponible hors ligne.
 // Incrémenter CACHE à chaque modification des fichiers ci-dessous.
-const CACHE = 'androidtv-links-v5';
+const CACHE = 'androidtv-links-v6';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './wikiflix.jpg', './data/govioz.json'];
 
 self.addEventListener('install', (event) => {
